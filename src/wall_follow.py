@@ -18,6 +18,11 @@ ki = 0
 servo_offset = 0.0
 prev_error = 0.0 
 error = 0.0
+
+prev_error_l = 0.0
+error_l = 0.0
+
+
 integral = 0.0
 cTime = 0.0
 pTime = 0.0
@@ -26,9 +31,12 @@ dt = 0.0
 errorInt = 0.0
 errorDer = 0.0
 
+errorInt_l = 0.0
+errorDer_l = 0.0
+
 #WALL FOLLOW PARAMS
 ANGLE_RANGE = 270 # Hokuyo 10LX has 270 degrees scan
-DESIRED_DISTANCE_RIGHT = 0.5 # meters
+DESIRED_DISTANCE_RIGHT = 0.9 # meters
 DESIRED_DISTANCE_LEFT = 0.9
 VELOCITY = 2.00 # meters per second
 CAR_LENGTH = 0.50 # Traxxas Rally is 20 inches or 0.5 meters
@@ -70,7 +78,7 @@ class WallFollow:
         errorInt = errorInt + error*dt
         errorDer = (error - prev_error)/dt
         pidOut = kp*error + ki*errorInt + kd*errorDer
-        angle = -1*pidOut
+        angle = math.radians(-1*pidOut)
         drive_msg = AckermannDriveStamped()
         drive_msg.header.stamp = rospy.Time.now()
         drive_msg.drive.steering_angle = angle
@@ -131,19 +139,37 @@ class WallFollow:
         # find the distance at 160 degree
         th160_i = int(math.ceil(math.radians(160)*1080/6.28))
 
+
+        th270_i = int(math.ceil(math.radians(270)*1080/6.28))
+
+        th200_i = int(math.ceil(math.radians(200)*1080/6.28))
+
         a = data.ranges[th160_i]
         b = data.ranges[th90_i]
+
+        a_l = data.ranges[th200_i]
+        b_l = data.ranges[th270_i]
 
         alpha = math.atan((a*math.cos(math.radians(70)) - b)/(a*math.sin(math.radians(70))))
         Dt = b*math.cos(alpha)
 
         Dt1 = Dt + L*math.sin(alpha)
 
+
+        alpha_l = math.atan((a_l*math.cos(math.radians(70)) - b_l)/(a_l*math.sin(math.radians(70))))
+        Dt_l = b_l*math.cos(alpha_l)
+
+        Dt1_l = Dt_l + L*math.sin(alpha_l)
+
+
         #print (Dt)
         #print(math.degrees(alpha))
 
         prev_error = error
         error = DESIRED_DISTANCE_RIGHT - Dt1
+
+        prev_error_l = error_l
+        error_l = DESIRED_DISTANCE_LEFT - Dt1_l
 
         self.pid_control(error, VELOCITY)
 
